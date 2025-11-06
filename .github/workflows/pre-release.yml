@@ -1,0 +1,108 @@
+name: pre-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      versionNumber:
+        description: 'Release version number (v#.#.#)'
+        type: string
+        required: true
+
+permissions:
+  contents: write          # commit the changelog on a branch
+  pull-requests: write     # open/label/merge the PR
+
+jobs:
+  prepare-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.out.outputs.version }}
+      tag: ${{ steps.out.outputs.tag }}
+      branch: ${{ steps.out.outputs.branch }}
+      title: ${{ steps.out.outputs.title }}
+      message: ${{ steps.out.outputs.message }}
+    steps:
+      - id: out
+        shell: bash
+        run: |
+          INPUT="${{ inputs.versionNumber }}"
+          if [[ ! "$INPUT" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Expected versionNumber like v1.2.3; got: $INPUT" >&2
+            exit 1
+          fi
+          VER="${INPUT#v}"
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "tag=$INPUT" >> "$GITHUB_OUTPUT"
+          echo "branch=release/changelog-$VER" >> "$GITHUB_OUTPUT"
+          echo "title=release: $INPUT" >> "$GITHUB_OUTPUT"
+          echo "message=chore(release): update changelog for $INPUT" >> "$GITHUB_OUTPUT"
+
+  changelog-pr:
+    needs: prepare-version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Run Changie - batch
+        uses: miniscruff/changie-action@5036dffa79ffc007110dc7f75eca7ef72780e147 # v2.1.0
+        with:
+          version: latest
+          args: batch ${{ needs.prepare-version.outputs.version }}
+
+      - name: Run Changie - merge
+        uses: miniscruff/changie-action@5036dffa79ffc007110dc7f75eca7ef72780e147 # v2.1.0
+        with:
+          version: latest
+          args: merge
+
+      - name: Create release branch & commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git switch -c "${{ needs.prepare-version.outputs.branch }}"
+          git add .
+          git commit -m "${{ needs.prepare-version.outputs.message }}" || {
+            echo "No changelog changes to commit"; exit 0; }
+
+      - name: Push branch
+        run: git push --set-upstream origin "${{ needs.prepare-version.outputs.branch }}"
+
+      - name: Open PR
+        id: cpr
+        uses: peter-evans/create-pull-request@5b4a9f6a9f433c1d7d8c7a5b1a5f9a6d6e5a8a6f # v6
+        with:
+          commit-message: "${{ needs.prepare-version.outputs.message }}"
+          committer: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          branch: "${{ needs.prepare-version.outputs.branch }}"
+          title: "${{ needs.prepare-version.outputs.title }}"
+          body: |
+            Automated changelog update for **${{ inputs.versionNumber }}**.
+            This PR will be auto-merged once required checks pass.
+          labels: "release,automation"
+          signoff: false
+          draft: false
+
+      # Wait for required checks (e.g., "GlueOps Standard Checks") to pass on the PR head SHA
+      - name: Wait for required checks
+        uses: peter-evans/wait-for-checks@4b8b5d3c5d0b5b1b2cc4a9e89b7a0c2a9bcb5dfd # v4
+        with:
+          ref: ${{ steps.cpr.outputs.pull-request-head-sha }}
+          interval: 15
+          timeout: 30m
+          # Optionally restrict to specific checks by regex:
+          # check-regexp: 'GlueOps Standard Checks.*'
+
+      # Merge the PR once checks succeed
+      - name: Merge PR
+        uses: peter-evans/merge@a8ff7a97937e2f2d9f7d3ddc9a7d68a4a64c7d1f # v3
+        with:
+          token: ${{ github.token }}
+          pull-request: ${{ steps.cpr.outputs.pull-request-number }}
+          merge-method: squash
+          # Use PR title as squash commit message so release workflow can parse it
+          commit-message: title
