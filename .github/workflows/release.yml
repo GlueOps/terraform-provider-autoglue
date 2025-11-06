@@ -8,10 +8,10 @@ on:
         type: string
         required: true
 
-# Use the built-in GITHUB_TOKEN for commits/tags/releases
+# Uses the built-in GITHUB_TOKEN for commit, tag, and release
 permissions:
-  contents: write   # needed to commit, tag, and create releases
-  issues: write     # for goreleaser to close the associated milestone (if configured)
+  contents: write   # commit, tag, and create releases
+  issues: write     # if goreleaser closes milestones
 
 jobs:
   changelog-version:
@@ -30,7 +30,7 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
-          # default is persist-credentials: true, which uses GITHUB_TOKEN
+          # default persist-credentials: true uses GITHUB_TOKEN
 
       - name: Batch changes
         uses: miniscruff/changie-action@5036dffa79ffc007110dc7f75eca7ef72780e147 # v2.1.0
@@ -48,9 +48,14 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add .
-          git commit -m "Update changelog" || echo "No changes to commit"
-          # Push back to the same branch that triggered the workflow
+          git commit -m "chore(release): update changelog for ${{ inputs.versionNumber }}" || {
+            echo "No changelog changes to commit"
+            exit 0
+          }
+
+          # Push back to the same branch that triggered the workflow (e.g., main)
           git push origin HEAD:${GITHUB_REF_NAME}
 
   release-tag:
@@ -61,7 +66,7 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
-          # Ensure we operate on the branch that triggered the workflow
+          # ensure we operate on the same branch ref (e.g., refs/heads/main)
           ref: ${{ github.ref }}
 
       - name: Create and push tag
@@ -70,18 +75,16 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           TAG="${{ inputs.versionNumber }}"
-          # If the tag already exists locally or remotely, skip creating it
+
+          # Create tag if not present locally
           if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
             echo "Tag $TAG already exists locally."
           else
-            git tag "$TAG"
+            git tag -a "$TAG" -m "Release $TAG"
           fi
 
-          # Push tag (idempotent if it already exists remotely)
-          git push origin "$TAG" || {
-            echo "Tag $TAG may already exist on remote; continuing."
-            exit 0
-          }
+          # Push tag (idempotent if remote already has it)
+          git push origin "$TAG" || echo "Tag $TAG may already exist on remote; continuing."
 
   goreleaser:
     needs: [changelog-version, changelog, release-tag]
