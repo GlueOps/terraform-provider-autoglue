@@ -1,4 +1,4 @@
-module github.com/glueops/terraform-provider-gsot
+module terraform-provider-autoglue
 
 go 1.25.3
 
