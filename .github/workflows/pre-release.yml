@@ -48,13 +48,13 @@ jobs:
           # IMPORTANT: stay on the default base branch (e.g., main); do NOT switch branches
 
       - name: Run Changie - batch
-        uses: miniscruff/changie-action@v2.1.0
+        uses: miniscruff/changie-action@5036dffa79ffc007110dc7f75eca7ef72780e147 # v2.1.0
         with:
           version: latest
           args: batch ${{ needs.prepare-version.outputs.version }}
 
       - name: Run Changie - merge
-        uses: miniscruff/changie-action@v2.1.0
+        uses: miniscruff/changie-action@5036dffa79ffc007110dc7f75eca7ef72780e147 # v2.1.0
         with:
           version: latest
           args: merge
@@ -79,7 +79,7 @@ jobs:
           draft: false
 
       - name: Enable auto-merge (squash)
-        uses: peter-evans/enable-pull-request-automerge@v3
+        uses: peter-evans/enable-pull-request-automerge@a660677d5469627102a1c1e11409dd063606628d # v3
         with:
           token: ${{ github.token }}
           pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
