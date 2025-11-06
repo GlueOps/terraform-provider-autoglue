@@ -8,8 +8,10 @@ on:
         type: string
         required: true
 
+# Use the built-in GITHUB_TOKEN for commits/tags/releases
 permissions:
-  contents: read # Changelog commit operations use service account PAT
+  contents: write   # needed to commit, tag, and create releases
+  issues: write     # for goreleaser to close the associated milestone (if configured)
 
 jobs:
   changelog-version:
@@ -28,26 +30,28 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
-          # Avoid persisting GITHUB_TOKEN credentials as they take priority over our service account PAT for `git push` operations
-          # More details: https://github.com/actions/checkout/blob/b4626ce19ce1106186ddf9bb20e706842f11a7c3/adrs/0153-checkout-v2.md#persist-credentials
-          persist-credentials: false
+          # default is persist-credentials: true, which uses GITHUB_TOKEN
+
       - name: Batch changes
         uses: miniscruff/changie-action@5036dffa79ffc007110dc7f75eca7ef72780e147 # v2.1.0
         with:
           version: latest
           args: batch ${{ needs.changelog-version.outputs.version }}
+
       - name: Merge changes
         uses: miniscruff/changie-action@5036dffa79ffc007110dc7f75eca7ef72780e147 # v2.1.0
         with:
           version: latest
           args: merge
-      - name: Git push changelog
+
+      - name: Commit & push changelog
         run: |
-          git config --global user.name "${{ vars.TF_DEVEX_CI_COMMIT_AUTHOR }}"
-          git config --global user.email "${{ vars.TF_DEVEX_CI_COMMIT_EMAIL }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -a -m "Update changelog"
-          git push "https://${{ vars.TF_DEVEX_CI_COMMIT_AUTHOR }}:${{ secrets.TF_DEVEX_COMMIT_GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          git commit -m "Update changelog" || echo "No changes to commit"
+          # Push back to the same branch that triggered the workflow
+          git push origin HEAD:${GITHUB_REF_NAME}
 
   release-tag:
     needs: changelog
@@ -57,34 +61,40 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
-          # Default input is the SHA that initially triggered the workflow. As we created a new commit in the previous job,
-          # to ensure we get the latest commit we use the ref for checkout: 'refs/heads/<branch_name>'
+          # Ensure we operate on the branch that triggered the workflow
           ref: ${{ github.ref }}
-          # Avoid persisting GITHUB_TOKEN credentials as they take priority over our service account PAT for `git push` operations
-          # More details: https://github.com/actions/checkout/blob/b4626ce19ce1106186ddf9bb20e706842f11a7c3/adrs/0153-checkout-v2.md#persist-credentials
-          persist-credentials: false
 
-      - name: Git push release tag
+      - name: Create and push tag
         run: |
-          git config --global user.name "${{ vars.TF_DEVEX_CI_COMMIT_AUTHOR }}"
-          git config --global user.email "${{ vars.TF_DEVEX_CI_COMMIT_EMAIL }}"
-          
-          git tag "${{ inputs.versionNumber }}"
-          git push "https://${{ vars.TF_DEVEX_CI_COMMIT_AUTHOR }}:${{ secrets.TF_DEVEX_COMMIT_GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" "${{ inputs.versionNumber }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          TAG="${{ inputs.versionNumber }}"
+          # If the tag already exists locally or remotely, skip creating it
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "Tag $TAG already exists locally."
+          else
+            git tag "$TAG"
+          fi
+
+          # Push tag (idempotent if it already exists remotely)
+          git push origin "$TAG" || {
+            echo "Tag $TAG may already exist on remote; continuing."
+            exit 0
+          }
 
   goreleaser:
-    needs: [ changelog-version, changelog, release-tag ]
+    needs: [changelog-version, changelog, release-tag]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # Needed for goreleaser to create GitHub release
-      issues: write # Needed for goreleaser to close associated milestone
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Checkout tag
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           ref: ${{ inputs.versionNumber }}
           fetch-depth: 0
 
-      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+      - name: Setup Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           go-version-file: 'go.mod'
 
@@ -93,8 +103,9 @@ jobs:
           cd .changes
           sed -e "1{/# /d;}" -e "2{/^$/d;}" ${{ needs.changelog-version.outputs.version }}.md > /tmp/release-notes.txt
 
-      - uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
+      - name: GoReleaser
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}  # built-in token
         with:
           args: release --release-notes /tmp/release-notes.txt --clean
