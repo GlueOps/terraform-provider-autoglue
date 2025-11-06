@@ -34,7 +34,7 @@ jobs:
           echo "version=$VER" >> "$GITHUB_OUTPUT"
           echo "tag=$INPUT" >> "$GITHUB_OUTPUT"
           echo "branch=release/changelog-$VER" >> "$GITHUB_OUTPUT"
-          echo "title=release: $INPUT" >> "$GITHUB_OUTPUT"
+          echo "title=chore(release): $INPUT" >> "$GITHUB_OUTPUT"
           echo "message=chore(release): update changelog for $INPUT" >> "$GITHUB_OUTPUT"
 
   changelog-pr:
