@@ -3,7 +3,7 @@ module terraform-provider-autoglue
 go 1.25.3
 
 require (
-	github.com/glueops/autoglue-sdk-go v0.0.0-00010101000000-000000000000
+	github.com/glueops/autoglue-sdk-go v0.0.0-20251106000315-3969abd74adf
 	github.com/hashicorp/terraform-plugin-framework v1.16.1
 	github.com/hashicorp/terraform-plugin-framework-validators v0.19.0
 )

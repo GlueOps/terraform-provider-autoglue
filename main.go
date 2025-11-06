@@ -4,7 +4,7 @@ import (
 	"context"
 	"flag"
 
-	"github.com/glueops/terraform-provider-gsot/internal/provider"
+	"terraform-provider-autoglue/internal/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 )
 
