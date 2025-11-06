@@ -9,7 +9,7 @@ on:
         required: true
 
 permissions:
-  contents: write          # commit to a branch
+  contents: write          # create commit on a new branch
   pull-requests: write     # open PR and enable auto-merge
 
 jobs:
@@ -45,6 +45,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # IMPORTANT: stay on the default base branch (e.g., main); do NOT switch branches
 
       - name: Run Changie - batch
         uses: miniscruff/changie-action@v2.1.0
@@ -58,31 +59,21 @@ jobs:
           version: latest
           args: merge
 
-      - name: Create release branch & commit
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git switch -c "${{ needs.prepare-version.outputs.branch }}"
-          git add .
-          git commit -m "${{ needs.prepare-version.outputs.message }}" || {
-            echo "No changelog changes to commit"; exit 0; }
-
-      - name: Push branch
-        run: git push --set-upstream origin "${{ needs.prepare-version.outputs.branch }}"
+      # Do NOT create/switch/push a branch here. Let create-pull-request do it.
 
       - name: Open PR
         id: cpr
         uses: peter-evans/create-pull-request@v6
         with:
-          commit-message: "${{ needs.prepare-version.outputs.message }}"
-          committer: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
-          author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
-          branch: "${{ needs.prepare-version.outputs.branch }}"
+          base: main                                   # ← explicitly target your protected branch
+          branch: "${{ needs.prepare-version.outputs.branch }}"  # ← will be created by the action
           title: "${{ needs.prepare-version.outputs.title }}"
           body: |
             Automated changelog update for **${{ inputs.versionNumber }}**.
             This PR is set to auto-merge once required checks pass.
+          commit-message: "${{ needs.prepare-version.outputs.message }}"
+          committer: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
           labels: "release,automation"
           signoff: false
           draft: false
