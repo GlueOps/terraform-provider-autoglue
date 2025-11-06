@@ -8,8 +8,8 @@ on:
       - '.changes/**'
 
 permissions:
-  contents: write   # tag + GitHub release
-  issues: write     # for goreleaser milestone close, if configured
+  contents: write
+  issues: write
 
 jobs:
   tag-and-release:
@@ -17,32 +17,31 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      # --- derive version/tag from commit or .changes ---
       - name: Derive version
         id: ver
         shell: bash
         run: |
-          # Try to extract vX.Y.Z from the merge commit title created by pre-release
           MSG="${{ github.event.head_commit.message }}"
           if [[ "$MSG" =~ v([0-9]+\.[0-9]+\.[0-9]+) ]]; then
             TAG="${BASH_REMATCH[0]}"
             VER="${BASH_REMATCH[1]}"
           else
-            # Fallback: pick the highest .changes/*.md version file
             FILE="$(ls .changes | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.md$' | sort -V | tail -n1 || true)"
             if [[ -z "$FILE" ]]; then
-              echo "Could not determine version from commit message or .changes"; exit 1
+              echo "Could not determine version from commit or .changes"; exit 1
             fi
             VER="${FILE%.md}"
             TAG="v${VER}"
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VER" >> "$GITHUB_OUTPUT"
-          echo "Derived TAG=$TAG (version=$VER)"
 
+      # --- create annotated tag if missing ---
       - name: Create annotated tag (idempotent)
         run: |
           if git rev-parse -q --verify "refs/tags/${{ steps.ver.outputs.tag }}" >/dev/null; then
@@ -50,26 +49,52 @@ jobs:
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git tag -a "${{ steps.ver.outputs.tag }}" -m "Release ${{ steps.ver.outputs.tag }}"
+            git tag -a "${{ steps.ver.outputs.tag }}" -m "Release ${{
+              steps.ver.outputs.tag }}"
             git push origin "${{ steps.ver.outputs.tag }}"
           fi
 
-      - name: Setup Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+      # --- (optional) config sanity check, catches schema issues early ---
+      - name: Install GoReleaser (for check)
+        uses: goreleaser/goreleaser-action@v6
         with:
-          go-version-file: 'go.mod'
+          install-only: true
+      - name: GoReleaser config check
+        run: goreleaser check
 
+      # --- robust release notes from .changes/<ver>.md ---
       - name: Generate Release Notes
         run: |
+          NOTES="/tmp/release-notes.txt"
           if [[ -f ".changes/${{ steps.ver.outputs.version }}.md" ]]; then
-            sed -e "1{/# /d;}" -e "2{/^$/d;}" ".changes/${{ steps.ver.outputs.version }}.md" > /tmp/release-notes.txt
-          else
-            echo "Release ${{ steps.ver.outputs.tag }}" > /tmp/release-notes.txt
+            # drop first H1 and first blank line
+            sed -e '1{/# /d;}' -e '2{/^$/d;}' ".changes/${{ steps.ver.outputs.version }}.md" > "$NOTES"
+          fi
+          # fallback if empty
+          if [[ ! -s "$NOTES" ]]; then
+            {
+              echo "Release ${{ steps.ver.outputs.tag }}"
+              echo
+              echo "No detailed changelog entries found for .changes/${{ steps.ver.outputs.version }}.md."
+            } > "$NOTES"
           fi
 
+      # --- import GPG key and expose fingerprint to GoReleaser ---
+      - name: Import GPG key
+        id: import_gpg
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.PASSPHRASE }}
+
+      - name: Export fingerprint to env
+        run: echo "GPG_FINGERPRINT=${{ steps.import_gpg.outputs.fingerprint }}" >> $GITHUB_ENV
+
+      # --- run GoReleaser (v2) ---
       - name: GoReleaser
-        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
+        uses: goreleaser/goreleaser-action@v6
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          # GPG_FINGERPRINT is already in the environment from previous step
         with:
           args: release --release-notes /tmp/release-notes.txt --clean
