@@ -1,9 +1,9 @@
 module terraform-provider-autoglue
 
-go 1.25.3
+go 1.25.4
 
 require (
-	github.com/glueops/autoglue-sdk-go v0.0.0-20251106000315-3969abd74adf
+	github.com/glueops/autoglue-sdk-go v0.7.6
 	github.com/hashicorp/terraform-plugin-framework v1.16.1
 	github.com/hashicorp/terraform-plugin-framework-validators v0.19.0
 )
@@ -31,4 +31,5 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250707201910-8d1bb00bc6a7 // indirect
 	google.golang.org/grpc v1.75.1 // indirect
 	google.golang.org/protobuf v1.36.9 // indirect
+	gopkg.in/validator.v2 v2.0.1 // indirect
 )
