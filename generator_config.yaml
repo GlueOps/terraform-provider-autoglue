@@ -1,0 +1,424 @@
+provider:
+  name: autoglue
+
+resources:
+  annotation:
+    create:
+      path: /annotations
+      method: POST
+    read:
+      path: /annotations/{id}
+      method: GET
+    update:
+      path: /annotations/{id}
+      method: PATCH
+    delete:
+      path: /annotations/{id}
+      method: DELETE
+
+  # Admin/archer/auth omitted as requested
+
+  cluster:
+    create:
+      path: /clusters
+      method: POST
+    read:
+      path: /clusters/{clusterID}
+      method: GET
+    update:
+      path: /clusters/{clusterID}
+      method: PATCH
+    delete:
+      path: /clusters/{clusterID}
+      method: DELETE
+
+  # Cluster attachments – all return dto.ClusterResponse on 200 and
+  # GET /clusters/{clusterID} also returns dto.ClusterResponse, so we
+  # can use that as the "read" operation for the resource.
+
+  cluster_apps_load_balancer_attachment:
+    create:
+      path: /clusters/{clusterID}/apps-load-balancer
+      method: POST
+    read:
+      path: /clusters/{clusterID}
+      method: GET
+    delete:
+      path: /clusters/{clusterID}/apps-load-balancer
+      method: DELETE
+
+  cluster_bastion_attachment:
+    create:
+      path: /clusters/{clusterID}/bastion
+      method: POST
+    read:
+      path: /clusters/{clusterID}
+      method: GET
+    delete:
+      path: /clusters/{clusterID}/bastion
+      method: DELETE
+
+  cluster_captain_domain_attachment:
+    create:
+      path: /clusters/{clusterID}/captain-domain
+      method: POST
+    read:
+      path: /clusters/{clusterID}
+      method: GET
+    delete:
+      path: /clusters/{clusterID}/captain-domain
+      method: DELETE
+
+  cluster_control_plane_record_set_attachment:
+    create:
+      path: /clusters/{clusterID}/control-plane-record-set
+      method: POST
+    read:
+      path: /clusters/{clusterID}
+      method: GET
+    delete:
+      path: /clusters/{clusterID}/control-plane-record-set
+      method: DELETE
+
+  cluster_glueops_load_balancer_attachment:
+    create:
+      path: /clusters/{clusterID}/glueops-load-balancer
+      method: POST
+    read:
+      path: /clusters/{clusterID}
+      method: GET
+    delete:
+      path: /clusters/{clusterID}/glueops-load-balancer
+      method: DELETE
+
+  cluster_kubeconfig:
+    create:
+      path: /clusters/{clusterID}/kubeconfig
+      method: POST
+    read:
+      path: /clusters/{clusterID}
+      method: GET
+    delete:
+      path: /clusters/{clusterID}/kubeconfig
+      method: DELETE
+
+  cluster_node_pool_attachment:
+    create:
+      path: /clusters/{clusterID}/node-pools
+      method: POST
+    read:
+      path: /clusters/{clusterID}
+      method: GET
+    delete:
+      path: /clusters/{clusterID}/node-pools/{nodePoolID}
+      method: DELETE
+
+  credential:
+    create:
+      path: /credentials
+      method: POST
+    read:
+      path: /credentials/{id}
+      method: GET
+    update:
+      path: /credentials/{id}
+      method: PATCH
+    delete:
+      path: /credentials/{id}
+      method: DELETE
+
+  # credential_reveal is left out of codegen; it’s a one-shot secret
+  # and not a great fit for Terraform state.
+
+  domain:
+    create:
+      path: /dns/domains
+      method: POST
+    read:
+      path: /dns/domains/{id}
+      method: GET
+    update:
+      path: /dns/domains/{id}
+      method: PATCH
+    delete:
+      path: /dns/domains/{id}
+      method: DELETE
+
+  label:
+    create:
+      path: /labels
+      method: POST
+    read:
+      path: /labels/{id}
+      method: GET
+    update:
+      path: /labels/{id}
+      method: PATCH
+    delete:
+      path: /labels/{id}
+      method: DELETE
+
+  load_balancer:
+    create:
+      path: /load-balancers
+      method: POST
+    read:
+      path: /load-balancers/{id}
+      method: GET
+    update:
+      path: /load-balancers/{id}
+      method: PATCH
+    delete:
+      path: /load-balancers/{id}
+      method: DELETE
+
+  me:
+    create:
+      path: /me
+      method: PATCH
+    read:
+      path: /me
+      method: GET
+
+  node_pool:
+    create:
+      path: /node-pools
+      method: POST
+    read:
+      path: /node-pools/{id}
+      method: GET
+    update:
+      path: /node-pools/{id}
+      method: PATCH
+    delete:
+      path: /node-pools/{id}
+      method: DELETE
+
+  # Node pool attachments (servers/annotations/labels/taints) are NOT
+  # included here because they don't have a 1:1 resource-shaped read
+  # endpoint. They’ll need hand-written resources.
+
+  org:
+    create:
+      path: /orgs
+      method: POST
+    read:
+      path: /orgs/{id}
+      method: GET
+    update:
+      path: /orgs/{id}
+      method: PATCH
+    delete:
+      path: /orgs/{id}
+      method: DELETE
+
+  org_api_key:
+    create:
+      path: /orgs/{id}/api-keys
+      method: POST
+    read:
+      path: /orgs/{id}/api-keys
+      method: GET
+    delete:
+      path: /orgs/{id}/api-keys/{key_id}
+      method: DELETE
+
+  org_member:
+    create:
+      path: /orgs/{id}/members
+      method: POST
+    read:
+      path: /orgs/{id}/members
+      method: GET
+    delete:
+      path: /orgs/{id}/members/{user_id}
+      method: DELETE
+
+  record_set:
+    create:
+      path: /dns/domains/{domain_id}/records
+      method: POST
+    read:
+      path: /dns/domains/{domain_id}/records
+      method: GET
+    update:
+      path: /dns/records/{id}
+      method: PATCH
+    delete:
+      path: /dns/records/{id}
+      method: DELETE
+
+  server:
+    create:
+      path: /servers
+      method: POST
+    read:
+      path: /servers/{id}
+      method: GET
+    update:
+      path: /servers/{id}
+      method: PATCH
+    delete:
+      path: /servers/{id}
+      method: DELETE
+
+  server_reset_hostkey:
+    create:
+      path: /servers/{id}/reset-hostkey
+      method: POST
+    read:
+      path: /servers/{id}
+      method: GET
+    # no delete – resetting is an action, not a persistent resource
+
+  ssh_key:
+    create:
+      path: /ssh
+      method: POST
+    read:
+      path: /ssh/{id}
+      method: GET
+    delete:
+      path: /ssh/{id}
+      method: DELETE
+
+  taint:
+    create:
+      path: /taints
+      method: POST
+    read:
+      path: /taints/{id}
+      method: GET
+    update:
+      path: /taints/{id}
+      method: PATCH
+    delete:
+      path: /taints/{id}
+      method: DELETE
+
+  user_api_key:
+    create:
+      path: /me/api-keys
+      method: POST
+    read:
+      path: /me/api-keys
+      method: GET
+    delete:
+      path: /me/api-keys/{id}
+      method: DELETE
+
+data_sources:
+  annotations:
+    read:
+      path: /annotations
+      method: GET
+
+  clusters:
+    read:
+      path: /clusters
+      method: GET
+
+  credentials:
+    read:
+      path: /credentials
+      method: GET
+
+  domains:
+    read:
+      path: /dns/domains
+      method: GET
+
+  healthz:
+    read:
+      path: /healthz
+      method: GET
+
+  jwks:
+    read:
+      path: /.well-known/jwks.json
+      method: GET
+
+  labels:
+    read:
+      path: /labels
+      method: GET
+
+  load_balancers:
+    read:
+      path: /load-balancers
+      method: GET
+
+  node_pool_annotations:
+    read:
+      path: /node-pools/{id}/annotations
+      method: GET
+
+  node_pool_labels:
+    read:
+      path: /node-pools/{id}/labels
+      method: GET
+
+  node_pool_servers:
+    read:
+      path: /node-pools/{id}/servers
+      method: GET
+
+  node_pool_taints:
+    read:
+      path: /node-pools/{id}/taints
+      method: GET
+
+  node_pools:
+    read:
+      path: /node-pools
+      method: GET
+
+  org_api_keys:
+    read:
+      path: /orgs/{id}/api-keys
+      method: GET
+
+  org_members:
+    read:
+      path: /orgs/{id}/members
+      method: GET
+
+  orgs:
+    read:
+      path: /orgs
+      method: GET
+
+  record_sets:
+    read:
+      path: /dns/domains/{domain_id}/records
+      method: GET
+
+  servers:
+    read:
+      path: /servers
+      method: GET
+
+  ssh_key_download:
+    read:
+      path: /ssh/{id}/download
+      method: GET
+
+  ssh_keys:
+    read:
+      path: /ssh
+      method: GET
+
+  taints:
+    read:
+      path: /taints
+      method: GET
+
+  user_api_keys:
+    read:
+      path: /me/api-keys
+      method: GET
+
+  version:
+    read:
+      path: /version
+      method: GET

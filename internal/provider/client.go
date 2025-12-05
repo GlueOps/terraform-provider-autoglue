@@ -1,78 +1,149 @@
 package provider
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
-
-	"github.com/glueops/autoglue-sdk-go"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"strings"
+	"time"
 )
 
-type Client struct {
-	SDK *autoglue.APIClient
+type autoglueClient struct {
+	baseURL     string
+	orgID       string
+	apiKey      string
+	orgKey      string
+	orgSecret   string
+	bearerToken string
+	httpClient  *http.Client
 }
 
-func NewClient(_ context.Context, cfg providerModel) (*Client, diag.Diagnostics) {
-	var diags diag.Diagnostics
+type clientConfig struct {
+	BaseURL     string
+	OrgID       string
+	APIKey      string
+	OrgKey      string
+	OrgSecret   string
+	BearerToken string
+}
 
-	conf := autoglue.NewConfiguration()
-	conf.Servers = autoglue.ServerConfigurations{{URL: cfg.Addr.ValueString()}}
+func newAutoglueClient(cfg clientConfig) (*autoglueClient, error) {
+	baseURL := strings.TrimSpace(cfg.BaseURL)
+	if baseURL == "" {
+		// Default to your production endpoint from the OpenAPI spec
+		baseURL = "https://autoglue.glueopshosted.com/api/v1"
+	}
 
-	// Attach auth headers for *every* request
-	rt := http.DefaultTransport
-	conf.HTTPClient = &http.Client{
-		Transport: headerRoundTripper{
-			under:     rt,
-			bearer:    strOrEmpty(cfg.Bearer),
-			apiKey:    strOrEmpty(cfg.APIKey),
-			orgKey:    strOrEmpty(cfg.OrgKey),
-			orgSecret: strOrEmpty(cfg.OrgSecret),
-			orgID:     strOrEmpty(cfg.OrgID),
+	if !strings.HasPrefix(baseURL, "http://") && !strings.HasPrefix(baseURL, "https://") {
+		baseURL = "https://" + baseURL
+	}
+
+	baseURL = strings.TrimRight(baseURL, "/")
+
+	if strings.TrimSpace(cfg.OrgID) == "" {
+		return nil, fmt.Errorf("org_id must be configured on the provider")
+	}
+
+	if strings.TrimSpace(cfg.APIKey) == "" &&
+		strings.TrimSpace(cfg.OrgKey) == "" &&
+		strings.TrimSpace(cfg.OrgSecret) == "" &&
+		strings.TrimSpace(cfg.BearerToken) == "" {
+		return nil, fmt.Errorf("one of api_key, (org_key + org_secret), or bearer_token must be configured")
+	}
+
+	return &autoglueClient{
+		baseURL:     baseURL,
+		orgID:       strings.TrimSpace(cfg.OrgID),
+		apiKey:      strings.TrimSpace(cfg.APIKey),
+		orgKey:      strings.TrimSpace(cfg.OrgKey),
+		orgSecret:   strings.TrimSpace(cfg.OrgSecret),
+		bearerToken: strings.TrimSpace(cfg.BearerToken),
+		httpClient: &http.Client{
+			Timeout: 60 * time.Second,
 		},
-	}
-
-	return &Client{SDK: autoglue.NewAPIClient(conf)}, diags
+	}, nil
 }
 
-type headerRoundTripper struct {
-	under     http.RoundTripper
-	bearer    string
-	apiKey    string
-	orgKey    string
-	orgSecret string
-	orgID     string
-}
+// doJSON performs an HTTP request with a JSON body and decodes a JSON response into out (if non-nil).
+func (c *autoglueClient) doJSON(
+	ctx context.Context,
+	method string,
+	path string,
+	query string,
+	body any,
+	out any,
+) error {
+	url := c.baseURL + path
+	if query != "" {
+		if !strings.HasPrefix(query, "?") {
+			url += "?"
+		}
+		url += query
+	}
 
-func (h headerRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	// Bearer -> Authorization
-	if h.bearer != "" {
-		req.Header.Set("Authorization", "Bearer "+h.bearer)
+	var bodyReader io.Reader
+	if body != nil {
+		b, err := json.Marshal(body)
+		if err != nil {
+			return fmt.Errorf("marshal request: %w", err)
+		}
+		bodyReader = bytes.NewReader(b)
 	}
-	// User API Key
-	if h.apiKey != "" {
-		req.Header.Set("X-API-KEY", h.apiKey)
-	}
-	// Org key/secret
-	if h.orgKey != "" {
-		req.Header.Set("X-ORG-KEY", h.orgKey)
-	}
-	if h.orgSecret != "" {
-		req.Header.Set("X-ORG-SECRET", h.orgSecret)
-	}
-	// Org selection header (user or key where needed)
-	if h.orgID != "" {
-		req.Header.Set("X-Org-ID", h.orgID)
-	}
-	return h.under.RoundTrip(req)
-}
 
-func strOrEmpty(v interface {
-	IsNull() bool
-	IsUnknown() bool
-	ValueString() string
-}) string {
-	if v.IsNull() || v.IsUnknown() {
-		return ""
+	req, err := http.NewRequestWithContext(ctx, method, url, bodyReader)
+	if err != nil {
+		return fmt.Errorf("build request: %w", err)
 	}
-	return v.ValueString()
+
+	req.Header.Set("Accept", "application/json")
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	// Org scoping
+	req.Header.Set("X-Org-ID", c.orgID)
+
+	// Auth
+	if c.apiKey != "" {
+		req.Header.Set("X-API-KEY", c.apiKey)
+	}
+	if c.orgKey != "" {
+		req.Header.Set("X-ORG-KEY", c.orgKey)
+	}
+	if c.orgSecret != "" {
+		req.Header.Set("X-ORG-SECRET", c.orgSecret)
+	}
+	if c.bearerToken != "" {
+		// Autoglue uses Bearer tokens in Authorization
+		req.Header.Set("Authorization", "Bearer "+c.bearerToken)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("perform request: %w", err)
+
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return fmt.Errorf("read response: %w", err)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("autoglue API error %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	if out == nil || len(respBody) == 0 {
+		return nil
+	}
+
+	if err := json.Unmarshal(respBody, out); err != nil {
+		return fmt.Errorf("decode response: %w", err)
+	}
+
+	return nil
 }
