@@ -21,11 +21,8 @@ Reads an Autoglue node pool by ID.
 
 ### Read-Only
 
-- `apiserver_url` (String) Kubernetes API server URL.
 - `created_at` (String) Creation timestamp.
-- `kubelet_options` (Map of String) Kubelet options as key/value pairs.
-- `kubelet_version` (String) Kubelet version.
 - `name` (String) Node pool name.
 - `organization_id` (String) Owning organization UUID.
-- `role` (String) Node pool role.
+- `role` (String) Node pool role ("master" or "worker").
 - `updated_at` (String) Last update timestamp.

@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	resourceschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
@@ -28,11 +30,7 @@ type nodePoolResource struct {
 type nodePoolResourceModel struct {
 	ID             types.String `tfsdk:"id"`
 	Name           types.String `tfsdk:"name"`
-	ApiserverURL   types.String `tfsdk:"apiserver_url"`
-	KubeletVersion types.String `tfsdk:"kubelet_version"`
-	KubeletOptions types.Map    `tfsdk:"kubelet_options"`
-	Role           types.String `tfsdk:"role"`
-
+	Role           types.String `tfsdk:"role"` // "master" or "worker"
 	CreatedAt      types.String `tfsdk:"created_at"`
 	UpdatedAt      types.String `tfsdk:"updated_at"`
 	OrganizationID types.String `tfsdk:"organization_id"`
@@ -63,26 +61,12 @@ func (r *nodePoolResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				Description: "Node pool name.",
 			},
 
-			"apiserver_url": resourceschema.StringAttribute{
-				Required:    true,
-				Description: "Kubernetes API server URL for this node pool.",
-			},
-
-			"kubelet_version": resourceschema.StringAttribute{
-				Required:    true,
-				Description: "Kubelet version for nodes in this pool.",
-			},
-
-			"kubelet_options": resourceschema.MapAttribute{
-				Optional:    true,
-				ElementType: types.StringType,
-				Description: "Additional kubelet options as key/value pairs.",
-			},
-
 			"role": resourceschema.StringAttribute{
-				Required: true,
-				Description: "Node pool role (for example: \"control-plane\" or \"worker\"). " +
-					"Exact values must match the Autoglue API's accepted roles.",
+				Required:    true,
+				Description: "Node pool role. Must match the Autoglue API’s enum: \"master\" or \"worker\".",
+				Validators: []validator.String{
+					stringvalidator.OneOf("master", "worker"),
+				},
 			},
 
 			"created_at": resourceschema.StringAttribute{
@@ -131,28 +115,14 @@ func (r *nodePoolResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
-	var kubeletOpts map[string]string
-	if !plan.KubeletOptions.IsNull() && !plan.KubeletOptions.IsUnknown() {
-		diags = plan.KubeletOptions.ElementsAs(ctx, &kubeletOpts, false)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-	}
-
 	payload := createNodePoolPayload{
-		Name:           plan.Name.ValueString(),
-		ApiserverURL:   plan.ApiserverURL.ValueString(),
-		KubeletVersion: plan.KubeletVersion.ValueString(),
-		KubeletOptions: kubeletOpts,
-		Role:           plan.Role.ValueString(),
+		Name: plan.Name.ValueString(),
+		Role: plan.Role.ValueString(),
 	}
 
 	tflog.Info(ctx, "Creating Autoglue node pool", map[string]any{
-		"name":            payload.Name,
-		"apiserver_url":   payload.ApiserverURL,
-		"kubelet_version": payload.KubeletVersion,
-		"role":            payload.Role,
+		"name": payload.Name,
+		"role": payload.Role,
 	})
 
 	var apiResp nodePool
@@ -230,36 +200,20 @@ func (r *nodePoolResource) Update(ctx context.Context, req resource.UpdateReques
 		return
 	}
 
-	var kubeletOpts map[string]string
-	if !plan.KubeletOptions.IsNull() && !plan.KubeletOptions.IsUnknown() {
-		diags = plan.KubeletOptions.ElementsAs(ctx, &kubeletOpts, false)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-	}
-
 	name := plan.Name.ValueString()
-	apiserverURL := plan.ApiserverURL.ValueString()
-	kubeletVersion := plan.KubeletVersion.ValueString()
 	role := plan.Role.ValueString()
 
 	payload := updateNodePoolPayload{
-		Name:           &name,
-		ApiserverURL:   &apiserverURL,
-		KubeletVersion: &kubeletVersion,
-		KubeletOptions: kubeletOpts,
-		Role:           &role,
+		Name: &name,
+		Role: &role,
 	}
 
 	path := fmt.Sprintf("/node-pools/%s", id)
 
 	tflog.Info(ctx, "Updating Autoglue node pool", map[string]any{
-		"id":              id,
-		"name":            name,
-		"apiserver_url":   apiserverURL,
-		"kubelet_version": kubeletVersion,
-		"role":            role,
+		"id":   id,
+		"name": name,
+		"role": role,
 	})
 
 	var apiResp nodePool
@@ -309,8 +263,9 @@ func (r *nodePoolResource) ImportState(ctx context.Context, req resource.ImportS
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
+// syncNodePoolToState copies the API response into the Terraform state model.
 func syncNodePoolToState(
-	ctx context.Context,
+	_ context.Context,
 	state *nodePoolResourceModel,
 	apiResp *nodePool,
 	diags *diag.Diagnostics,
@@ -325,18 +280,8 @@ func syncNodePoolToState(
 
 	state.ID = types.StringValue(apiResp.ID)
 	state.Name = types.StringValue(apiResp.Name)
-	state.ApiserverURL = types.StringValue(apiResp.ApiserverURL)
-	state.KubeletVersion = types.StringValue(apiResp.KubeletVersion)
 	state.Role = types.StringValue(apiResp.Role)
 	state.CreatedAt = types.StringValue(apiResp.CreatedAt)
 	state.UpdatedAt = types.StringValue(apiResp.UpdatedAt)
 	state.OrganizationID = types.StringValue(apiResp.OrganizationID)
-
-	if apiResp.KubeletOptions == nil {
-		state.KubeletOptions = types.MapNull(types.StringType)
-	} else {
-		m, d := types.MapValueFrom(ctx, types.StringType, apiResp.KubeletOptions)
-		diags.Append(d...)
-		state.KubeletOptions = m
-	}
 }

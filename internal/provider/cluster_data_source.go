@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -12,63 +14,142 @@ import (
 )
 
 var (
-	_ datasource.DataSource              = &clusterDataSource{}
-	_ datasource.DataSourceWithConfigure = &clusterDataSource{}
+	_ datasource.DataSource              = &clustersDataSource{}
+	_ datasource.DataSourceWithConfigure = &clustersDataSource{}
 )
 
-type clusterDataSource struct {
+type clustersDataSource struct {
 	client *autoglueClient
 }
 
-type clusterDataSourceModel struct {
-	ID              types.String `tfsdk:"id"`
-	Name            types.String `tfsdk:"name"`
+type clustersDataSourceModel struct {
+	Search   types.String            `tfsdk:"search"`
+	Clusters []clusterDataSourceItem `tfsdk:"clusters"`
+}
+
+type clusterDataSourceItem struct {
+	ID   types.String `tfsdk:"id"`
+	Name types.String `tfsdk:"name"`
+
 	ClusterProvider types.String `tfsdk:"cluster_provider"`
 	Region          types.String `tfsdk:"region"`
-	Status          types.String `tfsdk:"status"`
+
+	Status    types.String `tfsdk:"status"`
+	LastError types.String `tfsdk:"last_error"`
+
+	RandomToken    types.String `tfsdk:"random_token"`
+	CertificateKey types.String `tfsdk:"certificate_key"`
+
+	CaptainDomainID         types.String `tfsdk:"captain_domain_id"`
+	ControlPlaneRecordSetID types.String `tfsdk:"control_plane_record_set_id"`
+	ControlPlaneFQDN        types.String `tfsdk:"control_plane_fqdn"`
+	AppsLoadBalancerID      types.String `tfsdk:"apps_load_balancer_id"`
+	GlueOpsLoadBalancerID   types.String `tfsdk:"glueops_load_balancer_id"`
+	BastionServerID         types.String `tfsdk:"bastion_server_id"`
+
+	CreatedAt types.String `tfsdk:"created_at"`
+	UpdatedAt types.String `tfsdk:"updated_at"`
 }
 
-func NewClusterDataSource() datasource.DataSource {
-	return &clusterDataSource{}
+func NewClustersDataSource() datasource.DataSource {
+	return &clustersDataSource{}
 }
 
-func (d *clusterDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_cluster"
+func (d *clustersDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_clusters"
 }
 
-func (d *clusterDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *clustersDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = dsschema.Schema{
-		Description: "Reads an Autoglue cluster by ID.",
+		Description: "Lists clusters for the current organization.",
 		Attributes: map[string]dsschema.Attribute{
-			"id": dsschema.StringAttribute{
-				Required:    true,
-				Description: "Cluster ID to look up.",
+			"search": dsschema.StringAttribute{
+				Optional:    true,
+				Description: "Optional substring filter over cluster name (maps to `q`).",
 			},
-			"name": dsschema.StringAttribute{
+
+			"clusters": dsschema.ListNestedAttribute{
 				Computed:    true,
-				Description: "Cluster name.",
-			},
-			"cluster_provider": dsschema.StringAttribute{
-				Computed:    true,
-				Description: "Cluster provider.",
-			},
-			"region": dsschema.StringAttribute{
-				Computed:    true,
-				Description: "Cluster region.",
-			},
-			"status": dsschema.StringAttribute{
-				Computed:    true,
-				Description: "Cluster status.",
+				Description: "Matching clusters.",
+				NestedObject: dsschema.NestedAttributeObject{
+					Attributes: map[string]dsschema.Attribute{
+						"id": dsschema.StringAttribute{
+							Computed:    true,
+							Description: "Cluster ID.",
+						},
+						"name": dsschema.StringAttribute{
+							Computed:    true,
+							Description: "Cluster name.",
+						},
+						"cluster_provider": dsschema.StringAttribute{
+							Computed:    true,
+							Description: "Cluster provider.",
+						},
+						"region": dsschema.StringAttribute{
+							Computed:    true,
+							Description: "Cluster region.",
+						},
+						"status": dsschema.StringAttribute{
+							Computed:    true,
+							Description: "Cluster status.",
+						},
+						"last_error": dsschema.StringAttribute{
+							Computed:    true,
+							Description: "Last error message.",
+						},
+						"random_token": dsschema.StringAttribute{
+							Computed:    true,
+							Sensitive:   true,
+							Description: "Random token for the cluster.",
+						},
+						"certificate_key": dsschema.StringAttribute{
+							Computed:    true,
+							Sensitive:   true,
+							Description: "Cluster certificate key.",
+						},
+						"captain_domain_id": dsschema.StringAttribute{
+							Computed:    true,
+							Description: "Attached captain domain ID, if any.",
+						},
+						"control_plane_record_set_id": dsschema.StringAttribute{
+							Computed:    true,
+							Description: "Attached control plane record set ID, if any.",
+						},
+						"control_plane_fqdn": dsschema.StringAttribute{
+							Computed:    true,
+							Description: "Control plane FQDN, if present.",
+						},
+						"apps_load_balancer_id": dsschema.StringAttribute{
+							Computed:    true,
+							Description: "Attached apps load balancer ID, if any.",
+						},
+						"glueops_load_balancer_id": dsschema.StringAttribute{
+							Computed:    true,
+							Description: "Attached GlueOps load balancer ID, if any.",
+						},
+						"bastion_server_id": dsschema.StringAttribute{
+							Computed:    true,
+							Description: "Attached bastion server ID, if any.",
+						},
+						"created_at": dsschema.StringAttribute{
+							Computed:    true,
+							Description: "Creation timestamp.",
+						},
+						"updated_at": dsschema.StringAttribute{
+							Computed:    true,
+							Description: "Last update timestamp.",
+						},
+					},
+				},
 			},
 		},
 	}
 }
 
-func (d *clusterDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *clustersDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
-
 	client, ok := req.ProviderData.(*autoglueClient)
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -77,43 +158,86 @@ func (d *clusterDataSource) Configure(_ context.Context, req datasource.Configur
 		)
 		return
 	}
-
 	d.client = client
 }
 
-func (d *clusterDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+func (d *clustersDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	if d.client == nil {
 		resp.Diagnostics.AddError("Client not configured", "The provider client was not configured.")
 		return
 	}
 
-	var config clusterDataSourceModel
+	var config clustersDataSourceModel
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	id := config.ID.ValueString()
-	if id == "" {
-		resp.Diagnostics.AddError("Missing ID", "id must be set to read a cluster.")
+	values := url.Values{}
+	if !config.Search.IsNull() && !config.Search.IsUnknown() {
+		values.Set("q", strings.TrimSpace(config.Search.ValueString()))
+	}
+	query := values.Encode()
+
+	tflog.Info(ctx, "Listing Autoglue clusters", map[string]any{
+		"query": query,
+	})
+
+	var apiResp []cluster
+	if err := d.client.doJSON(ctx, http.MethodGet, "/clusters", query, nil, &apiResp); err != nil {
+		resp.Diagnostics.AddError("Error listing clusters", err.Error())
 		return
 	}
 
-	path := fmt.Sprintf("/clusters/%s", id)
+	config.Clusters = make([]clusterDataSourceItem, 0, len(apiResp))
+	for _, c := range apiResp {
+		item := clusterDataSourceItem{
+			ID:              types.StringValue(c.ID),
+			Name:            types.StringValue(c.Name),
+			ClusterProvider: types.StringValue(c.ClusterProvider),
+			Region:          types.StringValue(c.Region),
+			Status:          types.StringValue(c.Status),
+			LastError:       types.StringValue(c.LastError),
+			RandomToken:     types.StringValue(c.RandomToken),
+			CertificateKey:  types.StringValue(c.CertificateKey),
+			CreatedAt:       types.StringValue(c.CreatedAt),
+			UpdatedAt:       types.StringValue(c.UpdatedAt),
+		}
 
-	tflog.Info(ctx, "Reading Autoglue cluster data source", map[string]any{"id": id})
+		if c.CaptainDomain != nil {
+			item.CaptainDomainID = types.StringValue(c.CaptainDomain.ID)
+		} else {
+			item.CaptainDomainID = types.StringNull()
+		}
+		if c.ControlPlaneRecordSet != nil {
+			item.ControlPlaneRecordSetID = types.StringValue(c.ControlPlaneRecordSet.ID)
+		} else {
+			item.ControlPlaneRecordSetID = types.StringNull()
+		}
+		if c.ControlPlaneFQDN != nil {
+			item.ControlPlaneFQDN = types.StringValue(*c.ControlPlaneFQDN)
+		} else {
+			item.ControlPlaneFQDN = types.StringNull()
+		}
+		if c.AppsLoadBalancer != nil {
+			item.AppsLoadBalancerID = types.StringValue(c.AppsLoadBalancer.ID)
+		} else {
+			item.AppsLoadBalancerID = types.StringNull()
+		}
+		if c.GlueOpsLoadBalancer != nil {
+			item.GlueOpsLoadBalancerID = types.StringValue(c.GlueOpsLoadBalancer.ID)
+		} else {
+			item.GlueOpsLoadBalancerID = types.StringNull()
+		}
+		if c.BastionServer != nil {
+			item.BastionServerID = types.StringValue(c.BastionServer.ID)
+		} else {
+			item.BastionServerID = types.StringNull()
+		}
 
-	var apiResp cluster
-	if err := d.client.doJSON(ctx, http.MethodGet, path, "", nil, &apiResp); err != nil {
-		resp.Diagnostics.AddError("Error reading cluster", err.Error())
-		return
+		config.Clusters = append(config.Clusters, item)
 	}
-
-	config.Name = types.StringValue(apiResp.Name)
-	config.ClusterProvider = types.StringValue(apiResp.ClusterProvider)
-	config.Region = types.StringValue(apiResp.Region)
-	config.Status = types.StringValue(apiResp.Status)
 
 	diags = resp.State.Set(ctx, &config)
 	resp.Diagnostics.Append(diags...)

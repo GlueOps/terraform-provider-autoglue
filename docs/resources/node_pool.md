@@ -17,14 +17,8 @@ Manages an Autoglue node pool.
 
 ### Required
 
-- `apiserver_url` (String) Kubernetes API server URL for this node pool.
-- `kubelet_version` (String) Kubelet version for nodes in this pool.
 - `name` (String) Node pool name.
-- `role` (String) Node pool role (for example: "control-plane" or "worker"). Exact values must match the Autoglue API's accepted roles.
-
-### Optional
-
-- `kubelet_options` (Map of String) Additional kubelet options as key/value pairs.
+- `role` (String) Node pool role. Must match the Autoglue API’s enum: "master" or "worker".
 
 ### Read-Only
 

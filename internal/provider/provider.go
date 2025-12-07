@@ -130,7 +130,19 @@ func (p *autoglueProvider) Resources(_ context.Context) []func() resource.Resour
 		NewAnnotationResource,
 		NewNodePoolResource,
 		NewNodePoolServersResource,
+		NewNodePoolTaintsResource,
+		NewNodePoolLabelsResource,
+		NewNodePoolAnnotationsResource,
+		NewDomainResource,
+		NewRecordSetResource,
 		NewClusterResource,
+		NewClusterCaptainDomainResource,
+		NewClusterControlPlaneRecordSetResource,
+		NewClusterAppsLoadBalancerResource,
+		NewClusterGlueOpsLoadBalancerResource,
+		NewClusterBastionResource,
+		NewClusterNodePoolsResource,
+		NewClusterKubeconfigResource,
 	}
 }
 
@@ -144,7 +156,9 @@ func (p *autoglueProvider) DataSources(_ context.Context) []func() datasource.Da
 		NewLabelsDataSource,
 		NewAnnotationsDataSource,
 		NewNodePoolDataSource,
-		NewClusterDataSource,
+		NewDomainsDataSource,
+		NewRecordSetsDataSource,
+		NewClustersDataSource,
 	}
 
 }

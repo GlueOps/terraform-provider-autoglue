@@ -23,11 +23,7 @@ type nodePoolDataSource struct {
 type nodePoolDataSourceModel struct {
 	ID             types.String `tfsdk:"id"`
 	Name           types.String `tfsdk:"name"`
-	ApiserverURL   types.String `tfsdk:"apiserver_url"`
-	KubeletVersion types.String `tfsdk:"kubelet_version"`
-	KubeletOptions types.Map    `tfsdk:"kubelet_options"`
 	Role           types.String `tfsdk:"role"`
-
 	CreatedAt      types.String `tfsdk:"created_at"`
 	UpdatedAt      types.String `tfsdk:"updated_at"`
 	OrganizationID types.String `tfsdk:"organization_id"`
@@ -53,22 +49,9 @@ func (d *nodePoolDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 				Computed:    true,
 				Description: "Node pool name.",
 			},
-			"apiserver_url": dsschema.StringAttribute{
-				Computed:    true,
-				Description: "Kubernetes API server URL.",
-			},
-			"kubelet_version": dsschema.StringAttribute{
-				Computed:    true,
-				Description: "Kubelet version.",
-			},
-			"kubelet_options": dsschema.MapAttribute{
-				Computed:    true,
-				ElementType: types.StringType,
-				Description: "Kubelet options as key/value pairs.",
-			},
 			"role": dsschema.StringAttribute{
 				Computed:    true,
-				Description: "Node pool role.",
+				Description: "Node pool role (\"master\" or \"worker\").",
 			},
 			"created_at": dsschema.StringAttribute{
 				Computed:    true,
@@ -133,20 +116,10 @@ func (d *nodePoolDataSource) Read(ctx context.Context, req datasource.ReadReques
 	}
 
 	config.Name = types.StringValue(apiResp.Name)
-	config.ApiserverURL = types.StringValue(apiResp.ApiserverURL)
-	config.KubeletVersion = types.StringValue(apiResp.KubeletVersion)
 	config.Role = types.StringValue(apiResp.Role)
 	config.CreatedAt = types.StringValue(apiResp.CreatedAt)
 	config.UpdatedAt = types.StringValue(apiResp.UpdatedAt)
 	config.OrganizationID = types.StringValue(apiResp.OrganizationID)
-
-	if apiResp.KubeletOptions == nil {
-		config.KubeletOptions = types.MapNull(types.StringType)
-	} else {
-		mapVal, d2 := types.MapValueFrom(ctx, types.StringType, apiResp.KubeletOptions)
-		resp.Diagnostics.Append(d2...)
-		config.KubeletOptions = mapVal
-	}
 
 	diags = resp.State.Set(ctx, &config)
 	resp.Diagnostics.Append(diags...)
