@@ -192,11 +192,11 @@ func (r *credentialResource) Create(ctx context.Context, req resource.CreateRequ
 		Kind:               plan.Kind.ValueString(),
 		Scope:              scope,
 		ScopeKind:          plan.ScopeKind.ValueString(),
-		//ScopeVersion:       int32(plan.ScopeVersion.ValueInt64()),
-		//SchemaVersion:      int32(plan.SchemaVersion.ValueInt64()),
-		Secret:    secret,
-		AccountID: plan.AccountID.ValueString(),
-		Region:    plan.Region.ValueString(),
+		ScopeVersion:       int32(plan.ScopeVersion.ValueInt64()),
+		SchemaVersion:      int32(plan.SchemaVersion.ValueInt64()),
+		Secret:             secret,
+		AccountID:          plan.AccountID.ValueString(),
+		Region:             plan.Region.ValueString(),
 	}
 
 	tflog.Info(ctx, "Creating Autoglue credential", map[string]any{
