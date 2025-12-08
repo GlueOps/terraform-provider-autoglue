@@ -190,12 +190,9 @@ func (r *credentialResource) Create(ctx context.Context, req resource.CreateRequ
 		Name:               plan.Name.ValueString(),
 		CredentialProvider: plan.CredentialProvider.ValueString(),
 		Kind:               plan.Kind.ValueString(),
-		SchemaVersion:      int32(plan.SchemaVersion.ValueInt64()),
 		Scope:              scope,
 		ScopeKind:          plan.ScopeKind.ValueString(),
-		ScopeVersion:       int32(plan.ScopeVersion.ValueInt64()),
 		Secret:             secret,
-		AccountID:          plan.AccountID.ValueString(),
 		Region:             plan.Region.ValueString(),
 	}
 
