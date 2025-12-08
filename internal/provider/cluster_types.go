@@ -5,12 +5,16 @@ type createClusterPayload struct {
 	Name            string `json:"name"`
 	ClusterProvider string `json:"cluster_provider"`
 	Region          string `json:"region"`
+	DockerImage     string `json:"docker_image"`
+	DockerTag       string `json:"docker_tag"`
 }
 
 type updateClusterPayload struct {
 	Name            *string `json:"name,omitempty"`
 	ClusterProvider *string `json:"cluster_provider,omitempty"`
 	Region          *string `json:"region,omitempty"`
+	DockerImage     *string `json:"docker_image,omitempty"`
+	DockerTag       *string `json:"docker_tag,omitempty"`
 }
 
 // cluster represents dto.ClusterResponse (subset of fields we care about in Terraform).
@@ -23,6 +27,8 @@ type cluster struct {
 	LastError       string `json:"last_error"`
 	RandomToken     string `json:"random_token"`
 	CertificateKey  string `json:"certificate_key"`
+	DockerImage     string `json:"docker_image"`
+	DockerTag       string `json:"docker_tag"`
 	CreatedAt       string `json:"created_at"`
 	UpdatedAt       string `json:"updated_at"`
 

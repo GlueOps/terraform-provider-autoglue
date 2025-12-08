@@ -42,6 +42,8 @@ type clusterResourceModel struct {
 	AppsLoadBalancerID      types.String `tfsdk:"apps_load_balancer_id"`
 	GlueOpsLoadBalancerID   types.String `tfsdk:"glueops_load_balancer_id"`
 	BastionServerID         types.String `tfsdk:"bastion_server_id"`
+	DockerImage             types.String `tfsdk:"docker_image"`
+	DockerTag               types.String `tfsdk:"docker_tag"`
 
 	CreatedAt types.String `tfsdk:"created_at"`
 	UpdatedAt types.String `tfsdk:"updated_at"`
@@ -76,6 +78,16 @@ func (r *clusterResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			"cluster_provider": resourceschema.StringAttribute{
 				Required:    true,
 				Description: "Cluster provider identifier (e.g. aws, azure, gcp).",
+			},
+
+			"docker_image": resourceschema.StringAttribute{
+				Required:    true,
+				Description: "Docker image identifier.",
+			},
+
+			"docker_tag": resourceschema.StringAttribute{
+				Required:    true,
+				Description: "Docker tag identifier.",
 			},
 
 			"region": resourceschema.StringAttribute{
@@ -186,6 +198,8 @@ func (r *clusterResource) Create(ctx context.Context, req resource.CreateRequest
 		"name":             payload.Name,
 		"cluster_provider": payload.ClusterProvider,
 		"region":           payload.Region,
+		"docker_image":     payload.DockerImage,
+		"docker_tag":       payload.DockerTag,
 	})
 
 	var apiResp cluster
@@ -276,6 +290,16 @@ func (r *clusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		payload.Region = &v
 	}
 
+	if !plan.DockerImage.Equal(state.DockerImage) {
+		v := plan.DockerImage.ValueString()
+		payload.DockerImage = &v
+	}
+
+	if !plan.DockerTag.Equal(state.DockerTag) {
+		v := plan.DockerTag.ValueString()
+		payload.DockerTag = &v
+	}
+
 	if payload.Name == nil && payload.ClusterProvider == nil && payload.Region == nil {
 		// Nothing to update
 		return
@@ -345,6 +369,8 @@ func syncClusterFromAPI(state *clusterResourceModel, api *cluster) {
 	state.LastError = types.StringValue(api.LastError)
 	state.RandomToken = types.StringValue(api.RandomToken)
 	state.CertificateKey = types.StringValue(api.CertificateKey)
+	state.DockerImage = types.StringValue(api.DockerImage)
+	state.DockerTag = types.StringValue(api.DockerTag)
 	state.CreatedAt = types.StringValue(api.CreatedAt)
 	state.UpdatedAt = types.StringValue(api.UpdatedAt)
 

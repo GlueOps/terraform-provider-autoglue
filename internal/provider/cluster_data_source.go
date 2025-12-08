@@ -47,6 +47,9 @@ type clusterDataSourceItem struct {
 	GlueOpsLoadBalancerID   types.String `tfsdk:"glueops_load_balancer_id"`
 	BastionServerID         types.String `tfsdk:"bastion_server_id"`
 
+	DockerImage types.String `tfsdk:"docker_image"`
+	DockerTag   types.String `tfsdk:"docker_tag"`
+
 	CreatedAt types.String `tfsdk:"created_at"`
 	UpdatedAt types.String `tfsdk:"updated_at"`
 }
@@ -130,6 +133,14 @@ func (d *clustersDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 						"bastion_server_id": dsschema.StringAttribute{
 							Computed:    true,
 							Description: "Attached bastion server ID, if any.",
+						},
+						"docker_image": dsschema.StringAttribute{
+							Computed:    true,
+							Description: "Docker image.",
+						},
+						"docker_tag": dsschema.StringAttribute{
+							Computed:    true,
+							Description: "Docker tag.",
 						},
 						"created_at": dsschema.StringAttribute{
 							Computed:    true,

@@ -18,6 +18,8 @@ Manages an Autoglue cluster (name, provider, region). Attachments such as domain
 ### Required
 
 - `cluster_provider` (String) Cluster provider identifier (e.g. aws, azure, gcp).
+- `docker_image` (String) Docker image identifier.
+- `docker_tag` (String) Docker tag identifier.
 - `name` (String) Cluster name.
 - `region` (String) Cluster region identifier.
 

@@ -77,6 +77,8 @@ Manages an Autoglue cluster (name, provider, region). Attachments such as domain
 ### Required
 
 - `cluster_provider` (String) Cluster provider identifier (e.g. aws, azure, gcp).
+- `docker_image` (String) Docker image identifier.
+- `docker_tag` (String) Docker tag identifier.
 - `name` (String) Cluster name.
 - `region` (String) Cluster region identifier.
 
@@ -730,6 +732,8 @@ Read-Only:
 - `control_plane_fqdn` (String) Control plane FQDN, if present.
 - `control_plane_record_set_id` (String) Attached control plane record set ID, if any.
 - `created_at` (String) Creation timestamp.
+- `docker_image` (String) Docker image.
+- `docker_tag` (String) Docker tag.
 - `glueops_load_balancer_id` (String) Attached GlueOps load balancer ID, if any.
 - `id` (String) Cluster ID.
 - `last_error` (String) Last error message.
