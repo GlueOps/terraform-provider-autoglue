@@ -5,7 +5,7 @@ type createCredentialPayload struct {
 	Name               string            `json:"name,omitempty"`
 	CredentialProvider string            `json:"credential_provider"`
 	Kind               string            `json:"kind"`
-	SchemaVersion      int32             `json:"schema_version"`
+	SchemaVersion      int32             `json:"schema_version,omitempty"`
 	Scope              map[string]string `json:"scope,omitempty"`
 	ScopeKind          string            `json:"scope_kind,omitempty"`
 	ScopeVersion       int32             `json:"scope_version,omitempty"`
