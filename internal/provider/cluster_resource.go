@@ -146,7 +146,6 @@ func (r *clusterResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Computed:    true,
 				Description: "ID of the bastion server attached to this cluster, if any.",
 			},
-
 			"created_at": resourceschema.StringAttribute{
 				Computed:    true,
 				Description: "Creation timestamp (RFC3339).",
@@ -192,6 +191,8 @@ func (r *clusterResource) Create(ctx context.Context, req resource.CreateRequest
 		Name:            plan.Name.ValueString(),
 		ClusterProvider: plan.ClusterProvider.ValueString(),
 		Region:          plan.Region.ValueString(),
+		DockerImage:     plan.DockerImage.ValueString(),
+		DockerTag:       plan.DockerTag.ValueString(),
 	}
 
 	tflog.Info(ctx, "Creating Autoglue cluster", map[string]any{
@@ -312,6 +313,8 @@ func (r *clusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		"name":             plan.Name.ValueString(),
 		"cluster_provider": plan.ClusterProvider.ValueString(),
 		"region":           plan.Region.ValueString(),
+		"docker_image":     plan.DockerImage.ValueString(),
+		"docker_tag":       plan.DockerTag.ValueString(),
 	})
 
 	var apiResp cluster

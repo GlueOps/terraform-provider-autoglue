@@ -46,9 +46,8 @@ type clusterDataSourceItem struct {
 	AppsLoadBalancerID      types.String `tfsdk:"apps_load_balancer_id"`
 	GlueOpsLoadBalancerID   types.String `tfsdk:"glueops_load_balancer_id"`
 	BastionServerID         types.String `tfsdk:"bastion_server_id"`
-
-	DockerImage types.String `tfsdk:"docker_image"`
-	DockerTag   types.String `tfsdk:"docker_tag"`
+	DockerImage             types.String `tfsdk:"docker_image"`
+	DockerTag               types.String `tfsdk:"docker_tag"`
 
 	CreatedAt types.String `tfsdk:"created_at"`
 	UpdatedAt types.String `tfsdk:"updated_at"`
@@ -212,6 +211,8 @@ func (d *clustersDataSource) Read(ctx context.Context, req datasource.ReadReques
 			LastError:       types.StringValue(c.LastError),
 			RandomToken:     types.StringValue(c.RandomToken),
 			CertificateKey:  types.StringValue(c.CertificateKey),
+			DockerImage:     types.StringValue(c.DockerImage),
+			DockerTag:       types.StringValue(c.DockerTag),
 			CreatedAt:       types.StringValue(c.CreatedAt),
 			UpdatedAt:       types.StringValue(c.UpdatedAt),
 		}
