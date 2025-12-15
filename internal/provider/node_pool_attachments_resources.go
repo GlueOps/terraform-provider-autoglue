@@ -337,13 +337,17 @@ func (r *nodePoolServersResource) readServersIntoModel(
 		return err
 	}
 
-	var ids []string
+	ids := make([]string, 0, len(apiResp))
 	for _, s := range apiResp {
 		ids = append(ids, s.ID)
 	}
 
 	setVal, d := types.SetValueFrom(ctx, types.StringType, ids)
 	diags.Append(d...)
+
+	if setVal.IsNull() || setVal.IsUnknown() {
+		setVal = model.ServerIDs
+	}
 
 	model.ServerIDs = setVal
 	model.NodePoolID = types.StringValue(nodePoolID)
@@ -629,13 +633,17 @@ func (r *nodePoolTaintsResource) readTaintsIntoModel(
 		return err
 	}
 
-	var ids []string
+	ids := make([]string, 0, len(apiResp))
 	for _, t := range apiResp {
 		ids = append(ids, t.ID)
 	}
 
 	setVal, d := types.SetValueFrom(ctx, types.StringType, ids)
 	diags.Append(d...)
+
+	if setVal.IsNull() || setVal.IsUnknown() {
+		setVal = model.TaintIDs
+	}
 
 	model.TaintIDs = setVal
 	model.NodePoolID = types.StringValue(nodePoolID)
@@ -921,13 +929,17 @@ func (r *nodePoolLabelsResource) readLabelsIntoModel(
 		return err
 	}
 
-	var ids []string
+	ids := make([]string, 0, len(apiResp))
 	for _, l := range apiResp {
 		ids = append(ids, l.ID)
 	}
 
 	setVal, d := types.SetValueFrom(ctx, types.StringType, ids)
 	diags.Append(d...)
+
+	if setVal.IsNull() || setVal.IsUnknown() {
+		setVal = model.LabelIDs
+	}
 
 	model.LabelIDs = setVal
 	model.NodePoolID = types.StringValue(nodePoolID)
@@ -1213,13 +1225,17 @@ func (r *nodePoolAnnotationsResource) readAnnotationsIntoModel(
 		return err
 	}
 
-	var ids []string
+	ids := make([]string, 0, len(apiResp))
 	for _, a := range apiResp {
 		ids = append(ids, a.ID)
 	}
 
 	setVal, d := types.SetValueFrom(ctx, types.StringType, ids)
 	diags.Append(d...)
+
+	if setVal.IsNull() || setVal.IsUnknown() {
+		setVal = model.AnnotationIDs
+	}
 
 	model.AnnotationIDs = setVal
 	model.NodePoolID = types.StringValue(nodePoolID)
