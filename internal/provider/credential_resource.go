@@ -407,8 +407,16 @@ func mapCredentialToState(
 	state.CredentialProvider = types.StringValue(api.CredentialProvider)
 	state.Kind = types.StringValue(api.Kind)
 	state.SchemaVersion = types.Int64Value(int64(api.SchemaVersion))
-	state.AccountID = types.StringValue(api.AccountID)
-	state.Region = types.StringValue(api.Region)
+	if api.AccountID == "" {
+		state.AccountID = types.StringNull()
+	} else {
+		state.AccountID = types.StringValue(api.AccountID)
+	}
+	if api.Region == "" {
+		state.Region = types.StringNull()
+	} else {
+		state.Region = types.StringValue(api.Region)
+	}
 	state.CreatedAt = types.StringValue(api.CreatedAt)
 	state.UpdatedAt = types.StringValue(api.UpdatedAt)
 
