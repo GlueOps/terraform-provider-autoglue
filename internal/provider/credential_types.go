@@ -10,8 +10,8 @@ type createCredentialPayload struct {
 	ScopeKind          string            `json:"scope_kind,omitempty"`
 	ScopeVersion       int32             `json:"scope_version,omitempty"`
 	Secret             map[string]string `json:"secret"`
-	AccountID          string            `json:"account_id,omitempty"`
-	Region             string            `json:"region,omitempty"`
+	AccountID          *string           `json:"account_id,omitempty"`
+	Region             *string           `json:"region,omitempty"`
 }
 
 // updateCredentialPayload matches dto.UpdateCredentialRequest.
@@ -21,8 +21,8 @@ type updateCredentialPayload struct {
 	ScopeKind    string            `json:"scope_kind,omitempty"`
 	ScopeVersion int32             `json:"scope_version,omitempty"`
 	Secret       map[string]string `json:"secret,omitempty"`
-	AccountID    string            `json:"account_id,omitempty"`
-	Region       string            `json:"region,omitempty"`
+	AccountID    *string           `json:"account_id,omitempty"`
+	Region       *string           `json:"region,omitempty"`
 }
 
 // credential represents dto.CredentialOut.

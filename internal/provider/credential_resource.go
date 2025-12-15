@@ -195,8 +195,8 @@ func (r *credentialResource) Create(ctx context.Context, req resource.CreateRequ
 		ScopeVersion:       int32(plan.ScopeVersion.ValueInt64()),
 		SchemaVersion:      int32(plan.SchemaVersion.ValueInt64()),
 		Secret:             secret,
-		AccountID:          plan.AccountID.ValueString(),
-		Region:             plan.Region.ValueString(),
+		AccountID:          optString(plan.AccountID),
+		Region:             optString(plan.Region),
 	}
 
 	tflog.Info(ctx, "Creating Autoglue credential", map[string]any{
@@ -307,8 +307,8 @@ func (r *credentialResource) Update(ctx context.Context, req resource.UpdateRequ
 		ScopeKind:    plan.ScopeKind.ValueString(),
 		ScopeVersion: int32(plan.ScopeVersion.ValueInt64()),
 		Secret:       secret,
-		AccountID:    plan.AccountID.ValueString(),
-		Region:       plan.Region.ValueString(),
+		AccountID:    optString(plan.AccountID),
+		Region:       optString(plan.Region),
 	}
 
 	path := fmt.Sprintf("/credentials/%s", id)
@@ -428,4 +428,15 @@ func mapCredentialToState(
 	secretVal, d := types.MapValueFrom(ctx, types.StringType, secret)
 	diags.Append(d...)
 	state.Secret = secretVal
+}
+
+func optString(v types.String) *string {
+	if v.IsNull() || v.IsUnknown() {
+		return nil
+	}
+	s := v.ValueString()
+	if s == "" {
+		return nil
+	}
+	return &s
 }
