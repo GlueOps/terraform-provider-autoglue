@@ -12,13 +12,14 @@ import (
 )
 
 type autoglueClient struct {
-	baseURL     string
-	orgID       string
-	apiKey      string
-	orgKey      string
-	orgSecret   string
-	bearerToken string
-	httpClient  *http.Client
+	baseURL       string
+	orgID         string
+	apiKey        string
+	orgKey        string
+	orgSecret     string
+	bearerToken   string
+	sendOrgHeader bool
+	httpClient    *http.Client
 }
 
 type clientConfig struct {
@@ -33,34 +34,48 @@ type clientConfig struct {
 func newAutoglueClient(cfg clientConfig) (*autoglueClient, error) {
 	baseURL := strings.TrimSpace(cfg.BaseURL)
 	if baseURL == "" {
-		// Default to your production endpoint from the OpenAPI spec
 		baseURL = "https://autoglue.glueopshosted.com/api/v1"
 	}
-
 	if !strings.HasPrefix(baseURL, "http://") && !strings.HasPrefix(baseURL, "https://") {
 		baseURL = "https://" + baseURL
 	}
-
 	baseURL = strings.TrimRight(baseURL, "/")
 
-	if strings.TrimSpace(cfg.OrgID) == "" {
-		return nil, fmt.Errorf("org_id must be configured on the provider")
-	}
+	orgID := strings.TrimSpace(cfg.OrgID)
+	apiKey := strings.TrimSpace(cfg.APIKey)
+	orgKey := strings.TrimSpace(cfg.OrgKey)
+	orgSecret := strings.TrimSpace(cfg.OrgSecret)
+	bearerToken := strings.TrimSpace(cfg.BearerToken)
 
-	if strings.TrimSpace(cfg.APIKey) == "" &&
-		strings.TrimSpace(cfg.OrgKey) == "" &&
-		strings.TrimSpace(cfg.OrgSecret) == "" &&
-		strings.TrimSpace(cfg.BearerToken) == "" {
+	// Validate org_key/org_secret pairing (xor)
+	hasOrgKey := orgKey != ""
+	hasOrgSecret := orgSecret != ""
+	if hasOrgKey != hasOrgSecret {
+		return nil, fmt.Errorf("both org_key and org_secret must be configured together")
+	}
+	hasOrgCreds := hasOrgKey
+
+	// Must provide one auth method
+	hasAPIKey := apiKey != ""
+	hasBearer := bearerToken != ""
+	if !hasAPIKey && !hasOrgCreds && !hasBearer {
 		return nil, fmt.Errorf("one of api_key, (org_key + org_secret), or bearer_token must be configured")
 	}
 
+	// org_id required only for api_key or bearer_token
+	needsOrgID := hasAPIKey || hasBearer
+	if needsOrgID && orgID == "" {
+		return nil, fmt.Errorf("org_id must be configured when using api_key or bearer_token")
+	}
+
 	return &autoglueClient{
-		baseURL:     baseURL,
-		orgID:       strings.TrimSpace(cfg.OrgID),
-		apiKey:      strings.TrimSpace(cfg.APIKey),
-		orgKey:      strings.TrimSpace(cfg.OrgKey),
-		orgSecret:   strings.TrimSpace(cfg.OrgSecret),
-		bearerToken: strings.TrimSpace(cfg.BearerToken),
+		baseURL:       baseURL,
+		orgID:         orgID,
+		apiKey:        apiKey,
+		orgKey:        orgKey,
+		orgSecret:     orgSecret,
+		bearerToken:   bearerToken,
+		sendOrgHeader: needsOrgID,
 		httpClient: &http.Client{
 			Timeout: 60 * time.Second,
 		},
@@ -103,8 +118,10 @@ func (c *autoglueClient) doJSON(
 		req.Header.Set("Content-Type", "application/json")
 	}
 
-	// Org scoping
-	req.Header.Set("X-Org-ID", c.orgID)
+	// Org scoping: only needed for api_key or bearer_token auth.
+	if c.sendOrgHeader {
+		req.Header.Set("X-Org-ID", c.orgID)
+	}
 
 	// Auth
 	if c.apiKey != "" {
@@ -124,7 +141,6 @@ func (c *autoglueClient) doJSON(
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("perform request: %w", err)
-
 	}
 	defer resp.Body.Close()
 

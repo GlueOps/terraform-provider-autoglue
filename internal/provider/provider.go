@@ -54,8 +54,8 @@ func (p *autoglueProvider) Schema(
 				Description: "Base URL for the Autoglue API (default: https://autoglue.glueopshosted.com/api/v1).",
 			},
 			"org_id": providerschema.StringAttribute{
-				Required:    true,
-				Description: "Organization UUID used for X-Org-ID header.",
+				Optional:    true,
+				Description: "Organization UUID used for X-Org-ID header. Required when using api_key or bearer_token.",
 			},
 			"api_key": providerschema.StringAttribute{
 				Optional:    true,
@@ -160,7 +160,6 @@ func (p *autoglueProvider) DataSources(_ context.Context) []func() datasource.Da
 		NewRecordSetsDataSource,
 		NewClustersDataSource,
 	}
-
 }
 
 func (p *autoglueProvider) Functions(_ context.Context) []func() function.Function {

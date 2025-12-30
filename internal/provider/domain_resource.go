@@ -73,8 +73,12 @@ func (r *domainResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 
 			"zone_id": resourceschema.StringAttribute{
 				Optional: true,
+				Computed: true,
 				Description: "Optional zone ID for the backing Route 53 hosted zone. " +
 					"If omitted, the control plane may backfill this automatically.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 
 			"status": resourceschema.StringAttribute{
