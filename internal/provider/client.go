@@ -4,12 +4,18 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 )
+
+type apiError struct {
+	StatusCode int
+	Body       string
+}
 
 type autoglueClient struct {
 	baseURL       string
@@ -29,6 +35,18 @@ type clientConfig struct {
 	OrgKey      string
 	OrgSecret   string
 	BearerToken string
+}
+
+func (e apiError) Error() string {
+	return fmt.Sprintf("autoglue API error %d: %s", e.StatusCode, e.Body)
+}
+
+func isNotFound(err error) bool {
+	var ae *apiError
+	if errors.As(err, &ae) {
+		return ae.StatusCode == http.StatusNotFound
+	}
+	return false
 }
 
 func newAutoglueClient(cfg clientConfig) (*autoglueClient, error) {
@@ -150,7 +168,10 @@ func (c *autoglueClient) doJSON(
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("autoglue API error %d: %s", resp.StatusCode, string(respBody))
+		return &apiError{
+			StatusCode: resp.StatusCode,
+			Body:       string(respBody),
+		}
 	}
 
 	if out == nil || len(respBody) == 0 {

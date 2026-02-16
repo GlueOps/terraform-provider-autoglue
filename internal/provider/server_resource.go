@@ -199,9 +199,11 @@ func (r *serverResource) Read(ctx context.Context, req resource.ReadRequest, res
 
 	var apiResp server
 	if err := r.client.doJSON(ctx, http.MethodGet, path, "", nil, &apiResp); err != nil {
-		// If the server no longer exists, tell Terraform it's gone.
-		// You can refine this if your client differentiates 404s.
-		resp.State.RemoveResource(ctx)
+		if isNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading server", fmt.Sprintf("Error reading server: %s", err))
 		return
 	}
 

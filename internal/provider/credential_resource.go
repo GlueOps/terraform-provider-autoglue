@@ -247,8 +247,11 @@ func (r *credentialResource) Read(ctx context.Context, req resource.ReadRequest,
 
 	var apiResp credential
 	if err := r.client.doJSON(ctx, http.MethodGet, path, "", nil, &apiResp); err != nil {
-		// If the credential no longer exists, remove from state
-		resp.State.RemoveResource(ctx)
+		if isNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading credential", fmt.Sprintf("Error reading credential: %s", err.Error()))
 		return
 	}
 

@@ -231,8 +231,11 @@ func (r *recordSetResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	var apiResp recordSet
 	if err := r.client.doJSON(ctx, http.MethodGet, path, "", nil, &apiResp); err != nil {
-		// If not found, drop from state
-		resp.State.RemoveResource(ctx)
+		if isNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading record set", fmt.Sprintf("Error reading record set: %s", err.Error()))
 		return
 	}
 

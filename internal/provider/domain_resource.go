@@ -184,8 +184,11 @@ func (r *domainResource) Read(ctx context.Context, req resource.ReadRequest, res
 
 	var apiResp domain
 	if err := r.client.doJSON(ctx, http.MethodGet, path, "", nil, &apiResp); err != nil {
-		// If not found, drop from state
-		resp.State.RemoveResource(ctx)
+		if isNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading domain", fmt.Sprintf("Error reading domain: %s", err))
 		return
 	}
 

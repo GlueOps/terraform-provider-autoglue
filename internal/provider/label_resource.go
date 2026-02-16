@@ -152,8 +152,11 @@ func (r *labelResource) Read(ctx context.Context, req resource.ReadRequest, resp
 
 	var apiResp label
 	if err := r.client.doJSON(ctx, http.MethodGet, path, "", nil, &apiResp); err != nil {
-		// If not found, remove from state
-		resp.State.RemoveResource(ctx)
+		if isNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading label", fmt.Sprintf("Error reading label: %s", err.Error()))
 		return
 	}
 

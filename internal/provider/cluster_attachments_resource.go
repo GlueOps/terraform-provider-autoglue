@@ -145,8 +145,11 @@ func (r *clusterCaptainDomainResource) Read(ctx context.Context, req resource.Re
 
 	var apiResp cluster
 	if err := r.client.doJSON(ctx, http.MethodGet, path, "", nil, &apiResp); err != nil {
-		// cluster gone
-		resp.State.RemoveResource(ctx)
+		if isNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading cluster captain domain attachment", fmt.Sprintf("Error reading cluster captain domain attachment: %s", err.Error()))
 		return
 	}
 
@@ -376,7 +379,11 @@ func (r *clusterControlPlaneRecordSetResource) Read(ctx context.Context, req res
 	path := fmt.Sprintf("/clusters/%s", clusterID)
 	var apiResp cluster
 	if err := r.client.doJSON(ctx, http.MethodGet, path, "", nil, &apiResp); err != nil {
-		resp.State.RemoveResource(ctx)
+		if isNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading cluster control-plane record set attachment", fmt.Sprintf("Error reading cluster control-plane record set attachment: %s", err.Error()))
 		return
 	}
 
@@ -605,7 +612,11 @@ func (r *clusterAppsLoadBalancerResource) Read(ctx context.Context, req resource
 	path := fmt.Sprintf("/clusters/%s", clusterID)
 	var apiResp cluster
 	if err := r.client.doJSON(ctx, http.MethodGet, path, "", nil, &apiResp); err != nil {
-		resp.State.RemoveResource(ctx)
+		if isNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading cluster apps load balancer attachment", fmt.Sprintf("Error reading cluster apps load balancer attachment: %s", err.Error()))
 		return
 	}
 
@@ -847,7 +858,11 @@ func (r *clusterNodePoolsResource) Read(ctx context.Context, req resource.ReadRe
 	}
 
 	if err := r.readNodePoolsIntoModel(ctx, clusterID, &state, &resp.Diagnostics); err != nil {
-		resp.State.RemoveResource(ctx)
+		if isNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading cluster node pools", fmt.Sprintf("Error reading cluster node pools: %s", err.Error()))
 		return
 	}
 
@@ -1130,7 +1145,11 @@ func (r *clusterKubeconfigResource) Read(ctx context.Context, req resource.ReadR
 	path := fmt.Sprintf("/clusters/%s", clusterID)
 	var apiResp cluster
 	if err := r.client.doJSON(ctx, http.MethodGet, path, "", nil, &apiResp); err != nil {
-		resp.State.RemoveResource(ctx)
+		if isNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading cluster kubeconfig", fmt.Sprintf("Error reading cluster kubeconfig: %s", err.Error()))
 		return
 	}
 
@@ -1351,7 +1370,11 @@ func (r *clusterGlueOpsLoadBalancerResource) Read(ctx context.Context, req resou
 	path := fmt.Sprintf("/clusters/%s", clusterID)
 	var apiResp cluster
 	if err := r.client.doJSON(ctx, http.MethodGet, path, "", nil, &apiResp); err != nil {
-		resp.State.RemoveResource(ctx)
+		if isNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading cluster GlueOps load balancer attachment", fmt.Sprintf("Error reading cluster GlueOps load balancer attachment: %s", err.Error()))
 		return
 	}
 
@@ -1580,7 +1603,11 @@ func (r *clusterBastionResource) Read(ctx context.Context, req resource.ReadRequ
 	path := fmt.Sprintf("/clusters/%s", clusterID)
 	var apiResp cluster
 	if err := r.client.doJSON(ctx, http.MethodGet, path, "", nil, &apiResp); err != nil {
-		resp.State.RemoveResource(ctx)
+		if isNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading cluster bastion attachment", fmt.Sprintf("Error reading cluster bastion attachment: %s", err.Error()))
 		return
 	}
 

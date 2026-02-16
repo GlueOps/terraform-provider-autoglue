@@ -162,8 +162,11 @@ func (r *nodePoolResource) Read(ctx context.Context, req resource.ReadRequest, r
 
 	var apiResp nodePool
 	if err := r.client.doJSON(ctx, http.MethodGet, path, "", nil, &apiResp); err != nil {
-		// If gone, drop from state
-		resp.State.RemoveResource(ctx)
+		if isNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading node pool", fmt.Sprintf("Error reading node pool: %s", err))
 		return
 	}
 

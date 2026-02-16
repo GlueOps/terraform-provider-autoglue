@@ -239,8 +239,11 @@ func (r *clusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 
 	var apiResp cluster
 	if err := r.client.doJSON(ctx, http.MethodGet, path, "", nil, &apiResp); err != nil {
-		// If not found, drop from state
-		resp.State.RemoveResource(ctx)
+		if isNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading cluster", fmt.Sprintf("Error reading cluster %s: %s", id, err.Error()))
 		return
 	}
 
@@ -301,8 +304,12 @@ func (r *clusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		payload.DockerTag = &v
 	}
 
-	if payload.Name == nil && payload.ClusterProvider == nil && payload.Region == nil {
-		// Nothing to update
+	if payload.Name == nil &&
+		payload.ClusterProvider == nil &&
+		payload.Region == nil &&
+		payload.DockerImage == nil &&
+		payload.DockerTag == nil {
+		tflog.Info(ctx, "No changes detected for Autoglue cluster", map[string]any{"id": id})
 		return
 	}
 

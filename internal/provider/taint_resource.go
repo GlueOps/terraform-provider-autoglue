@@ -174,8 +174,11 @@ func (r *taintResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	var apiResp taint
 	err := r.client.doJSON(ctx, http.MethodGet, path, "", nil, &apiResp)
 	if err != nil {
-		// If the taint no longer exists, tell Terraform it's gone
-		resp.State.RemoveResource(ctx)
+		if isNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading taint", fmt.Sprintf("Error reading taint: %s", err))
 		return
 	}
 

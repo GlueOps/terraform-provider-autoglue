@@ -202,7 +202,11 @@ func (r *nodePoolServersResource) Read(ctx context.Context, req resource.ReadReq
 	}
 
 	if err := r.readServersIntoModel(ctx, nodePoolID, &state, &resp.Diagnostics); err != nil {
-		resp.State.RemoveResource(ctx)
+		if isNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading servers for node pool", fmt.Sprintf("Error reading servers for node pool: %s", err))
 		return
 	}
 
@@ -498,7 +502,11 @@ func (r *nodePoolTaintsResource) Read(ctx context.Context, req resource.ReadRequ
 	}
 
 	if err := r.readTaintsIntoModel(ctx, nodePoolID, &state, &resp.Diagnostics); err != nil {
-		resp.State.RemoveResource(ctx)
+		if isNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading taints for node pool", fmt.Sprintf("Error reading taints for node pool: %s", err))
 		return
 	}
 
@@ -794,7 +802,11 @@ func (r *nodePoolLabelsResource) Read(ctx context.Context, req resource.ReadRequ
 	}
 
 	if err := r.readLabelsIntoModel(ctx, nodePoolID, &state, &resp.Diagnostics); err != nil {
-		resp.State.RemoveResource(ctx)
+		if isNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading labels for node pool", fmt.Sprintf("Error reading labels for node pool: %s", err))
 		return
 	}
 
@@ -1090,7 +1102,11 @@ func (r *nodePoolAnnotationsResource) Read(ctx context.Context, req resource.Rea
 	}
 
 	if err := r.readAnnotationsIntoModel(ctx, nodePoolID, &state, &resp.Diagnostics); err != nil {
-		resp.State.RemoveResource(ctx)
+		if isNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading annotations for node pool", fmt.Sprintf("Error reading annotations for node pool: %s", err))
 		return
 	}
 

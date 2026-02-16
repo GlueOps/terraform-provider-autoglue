@@ -152,7 +152,11 @@ func (r *annotationResource) Read(ctx context.Context, req resource.ReadRequest,
 
 	var apiResp annotation
 	if err := r.client.doJSON(ctx, http.MethodGet, path, "", nil, &apiResp); err != nil {
-		resp.State.RemoveResource(ctx)
+		if isNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading annotation", fmt.Sprintf("Error reading annotation: %s", err.Error()))
 		return
 	}
 

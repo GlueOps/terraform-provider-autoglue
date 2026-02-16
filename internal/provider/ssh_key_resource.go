@@ -197,8 +197,11 @@ func (r *sshKeyResource) Read(ctx context.Context, req resource.ReadRequest, res
 
 	var apiResp sshKey
 	if err := r.client.doJSON(ctx, http.MethodGet, path, "", nil, &apiResp); err != nil {
-		// If key is gone, tell Terraform it's gone
-		resp.State.RemoveResource(ctx)
+		if isNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading SSH key", fmt.Sprintf("Error reading SSH key: %s", err.Error()))
 		return
 	}
 
