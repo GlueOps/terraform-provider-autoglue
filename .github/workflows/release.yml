@@ -56,7 +56,7 @@ jobs:
 
       # --- (optional) config sanity check, catches schema issues early ---
       - name: Install GoReleaser (for check)
-        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6
+        uses: goreleaser/goreleaser-action@ec59f474b9834571250b370d4735c50f8e2d1e29 # v7
         with:
           install-only: true
       - name: GoReleaser config check
@@ -92,7 +92,7 @@ jobs:
 
       # --- run GoReleaser (v2) ---
       - name: GoReleaser
-        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6
+        uses: goreleaser/goreleaser-action@ec59f474b9834571250b370d4735c50f8e2d1e29 # v7
         env:
           GITHUB_TOKEN: ${{ github.token }}
           # GPG_FINGERPRINT is already in the environment from previous step
