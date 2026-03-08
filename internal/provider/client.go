@@ -10,11 +10,19 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 type apiError struct {
-	StatusCode int
-	Body       string
+	StatusCode         int
+	Body               string
+	Method             string
+	Path               string
+	RetryAfter         string
+	RateLimitLimit     string
+	RateLimitRemaining string
+	RateLimitReset     string
 }
 
 type autoglueClient struct {
@@ -37,14 +45,44 @@ type clientConfig struct {
 	BearerToken string
 }
 
+func (e *apiError) hasRateLimitInfo() bool {
+	return e.StatusCode == http.StatusTooManyRequests || e.RateLimitRemaining == "0"
+}
+
 func (e apiError) Error() string {
-	return fmt.Sprintf("autoglue API error %d: %s", e.StatusCode, e.Body)
+	msg := fmt.Sprintf("autoglue API error %d: %s", e.StatusCode, e.Body)
+	if e.Method != "" || e.Path != "" {
+		msg += fmt.Sprintf(" [%s %s]", e.Method, e.Path)
+	}
+	if e.hasRateLimitInfo() {
+		if e.RateLimitLimit != "" {
+			msg += fmt.Sprintf("; X-RateLimit-Limit: %s", e.RateLimitLimit)
+		}
+		if e.RateLimitRemaining != "" {
+			msg += fmt.Sprintf("; X-RateLimit-Remaining: %s", e.RateLimitRemaining)
+		}
+		if e.RateLimitReset != "" {
+			msg += fmt.Sprintf("; X-RateLimit-Reset: %s", e.RateLimitReset)
+		}
+		if e.RetryAfter != "" {
+			msg += fmt.Sprintf("; Retry-After: %s", e.RetryAfter)
+		}
+	}
+	return msg
 }
 
 func isNotFound(err error) bool {
 	var ae *apiError
 	if errors.As(err, &ae) {
 		return ae.StatusCode == http.StatusNotFound
+	}
+	return false
+}
+
+func isRateLimited(err error) bool {
+	var ae *apiError
+	if errors.As(err, &ae) {
+		return ae.hasRateLimitInfo()
 	}
 	return false
 }
@@ -168,10 +206,35 @@ func (c *autoglueClient) doJSON(
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return &apiError{
-			StatusCode: resp.StatusCode,
-			Body:       string(respBody),
+		retryAfter := resp.Header.Get("Retry-After")
+		rlLimit := resp.Header.Get("X-RateLimit-Limit")
+		rlRemaining := resp.Header.Get("X-RateLimit-Remaining")
+		rlReset := resp.Header.Get("X-RateLimit-Reset")
+
+		apiErr := &apiError{
+			StatusCode:         resp.StatusCode,
+			Body:               string(respBody),
+			Method:             method,
+			Path:               path,
+			RetryAfter:         retryAfter,
+			RateLimitLimit:     rlLimit,
+			RateLimitRemaining: rlRemaining,
+			RateLimitReset:     rlReset,
 		}
+
+		if apiErr.hasRateLimitInfo() || retryAfter != "" {
+			tflog.Warn(ctx, "Autoglue upstream rate limit indicated", map[string]any{
+				"status_code":           resp.StatusCode,
+				"method":                method,
+				"path":                  path,
+				"retry_after":           retryAfter,
+				"x_ratelimit_limit":     rlLimit,
+				"x_ratelimit_remaining": rlRemaining,
+				"x_ratelimit_reset":     rlReset,
+			})
+		}
+
+		return apiErr
 	}
 
 	if out == nil || len(respBody) == 0 {
