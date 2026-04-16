@@ -146,7 +146,8 @@ func (p *autoglueProvider) Resources(_ context.Context) []func() resource.Resour
 	}
 }
 
-func (p *autoglueProvider) DataSources(_ context.Context) []func() datasource.DataSource {
+		NewClusterKubeconfigResource,
+		NewClusterMetadataResource,
 	return []func() datasource.DataSource{
 		NewSSHKeysDataSource,
 		NewSSHKeyDownloadDataSource,
