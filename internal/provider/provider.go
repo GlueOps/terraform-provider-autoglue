@@ -143,6 +143,7 @@ func (p *autoglueProvider) Resources(_ context.Context) []func() resource.Resour
 		NewClusterBastionResource,
 		NewClusterNodePoolsResource,
 		NewClusterKubeconfigResource,
+		NewClusterMetadataResource,
 	}
 }
 
