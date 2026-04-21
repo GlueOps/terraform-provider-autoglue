@@ -113,6 +113,20 @@ resources:
       path: /clusters/{clusterID}/node-pools/{nodePoolID}
       method: DELETE
 
+  cluster_metadata:
+    create:
+      path: /clusters/{clusterID}/metadata
+      method: POST
+    read:
+      path: /clusters/{clusterID}/metadata/{metadataID}
+      method: GET
+    update:
+      path: /clusters/{clusterID}/metadata/{metadataID}
+      method: PATCH
+    delete:
+      path: /clusters/{clusterID}/metadata/{metadataID}
+      method: DELETE
+
   credential:
     create:
       path: /credentials
