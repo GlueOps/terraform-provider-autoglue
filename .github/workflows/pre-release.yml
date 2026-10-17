@@ -48,13 +48,13 @@ jobs:
           # IMPORTANT: stay on the default base branch (e.g., main); do NOT switch branches
 
       - name: Run Changie - batch
-        uses: miniscruff/changie-action@11bcad388e7973948cbcecb10863baf024d5f607 # v3.0.0
+        uses: miniscruff/changie-action@3223cb29b92a0972dedc864ace3da01e04780ae4 # v3.0.1
         with:
           version: latest
           args: batch ${{ needs.prepare-version.outputs.version }}
 
       - name: Run Changie - merge
-        uses: miniscruff/changie-action@11bcad388e7973948cbcecb10863baf024d5f607 # v3.0.0
+        uses: miniscruff/changie-action@3223cb29b92a0972dedc864ace3da01e04780ae4 # v3.0.1
         with:
           version: latest
           args: merge
