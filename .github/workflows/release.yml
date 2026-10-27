@@ -21,6 +21,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Build with a known toolchain. Without this GoReleaser compiles with
+      # whatever Go the runner image happens to ship, so the standard library
+      # in a released provider binary was never chosen. setup-go reads the
+      # toolchain directive from go.mod, which Renovate keeps current.
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
       # --- derive version/tag from commit or .changes ---
       - name: Derive version
         id: ver
