@@ -23,8 +23,9 @@ jobs:
 
       # Build with a known toolchain. Without this GoReleaser compiles with
       # whatever Go the runner image happens to ship, so the standard library
-      # in a released provider binary was never chosen. setup-go reads the
-      # toolchain directive from go.mod, which Renovate keeps current.
+      # in a released provider binary was never chosen. setup-go reads the go
+      # directive from go.mod. Renovate does not bump that line by default (it
+      # reads it as a minimum), so raise it by hand on each Go patch release.
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
